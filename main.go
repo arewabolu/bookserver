@@ -34,6 +34,5 @@ func main() {
 	//router.Use(render.SetContentType(render.ContentTypeJSON))
 	router.Post("/register/", CreateAccount)
 	router.Post("/login/", authHandler)
-
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

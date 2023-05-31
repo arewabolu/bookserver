@@ -12,7 +12,13 @@ type UserRequest struct {
 	Bookname string `json:"bookname" pg:"bookname"`
 }
 
-type Book struct {
+type Readbook struct {
+	ID       int    `json:"-"`
+	UserID   int    `pg:"user_id"`
+	Bookname string `pg:"bookname"`
+}
+
+type UnreadBook struct {
 	ID       int    `json:"-"`
 	UserID   int    `pg:"user_id"`
 	Bookname string `pg:"bookname"`

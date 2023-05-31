@@ -110,12 +110,10 @@ func addBook(w http.ResponseWriter, r *http.Request) {
 		if book.Bookname == "" || book.Bookname == " " {
 			w.WriteHeader(http.StatusNoContent)
 		}
-
-		bookInfo := &Book{
+		bookInfo := &Readbook{
 			UserID:   userID,
 			Bookname: book.Bookname,
 		}
-		fmt.Println(bookInfo)
 		_, insErr := dbConn.Model(bookInfo).Insert()
 		if insErr != nil {
 			w.Write([]byte("sorry! we were unable to add your read book" + insErr.Error()))
@@ -134,7 +132,7 @@ func addBook(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}
 
-		bookInfo := &Book{
+		bookInfo := &UnreadBook{
 			UserID:   userID,
 			Bookname: book.Bookname,
 		}
@@ -156,27 +154,36 @@ func listBooks(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case strings.Contains(r.URL.Path, "/read"):
-		var books []Book
+		var books []Readbook
 		queryErr := dbConn.Model(&books).Column("bookname").Where("?=?", pg.Ident("user_id"), userID).Select()
 		if queryErr != nil {
 			w.Write([]byte("unable to list read books"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		err := json.NewEncoder(w).Encode(books)
+
+		indBooks := make([]UserRequest, len(books))
+		for i := range books {
+			indBooks[i].Bookname = books[i].Bookname
+		}
+		err := json.NewEncoder(w).Encode(indBooks)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		w.WriteHeader(http.StatusAccepted)
 	case strings.Contains(r.URL.Path, "/unread"):
-		var books []Book
+		var books []UnreadBook
 		queryErr := dbConn.Model(&books).Column("bookname").Where("?=?", pg.Ident("user_id"), userID).Select()
 		if queryErr != nil {
 			w.Write([]byte("unable to list unread books"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		err := json.NewEncoder(w).Encode(books)
+		indBooks := make([]UserRequest, len(books))
+		for i := range books {
+			indBooks[i].Bookname = books[i].Bookname
+		}
+		err := json.NewEncoder(w).Encode(indBooks)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -201,7 +208,7 @@ func removeBook(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}
 
-		bookInfoModel := &Book{}
+		bookInfoModel := &Readbook{}
 		_, delErr := dbConn.Model(bookInfoModel).
 			Where("?=?", pg.Ident("bookname"), book.Bookname).
 			Where("?=?", pg.Ident("user_id"), userID).
@@ -224,7 +231,7 @@ func removeBook(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}
 
-		unreadBookInfo := &Book{
+		unreadBookInfo := &UnreadBook{
 			UserID:   userID,
 			Bookname: book.Bookname,
 		}

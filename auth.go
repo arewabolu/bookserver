@@ -83,7 +83,7 @@ func middlewareAUth(next http.Handler) http.Handler {
 
 		claims, validationErr := ValidateJWT(token)
 		if validationErr != nil {
-			w.Write([]byte("validation error")) //validationErr.Error()
+			w.Write([]byte("you must provide a valid authorization token"))
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
