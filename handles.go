@@ -188,7 +188,7 @@ func listAllBooks(w http.ResponseWriter, r *http.Request) {
 	userID, _ := strconv.Atoi(userIDStr)
 
 	var books []Items
-	queryErr := dbConn.Model(&books).Column("bookname").
+	queryErr := dbConn.Model(&books).
 		Where("?=?", pg.Ident("user_id"), userID).
 		Select()
 	if queryErr != nil {
@@ -237,5 +237,41 @@ func removeBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusAccepted)
+}
+func search(w http.ResponseWriter, r *http.Request) {
+	dbConn := Open()
+	defer dbConn.Close()
+	userIDStr := r.Context().Value(uuid).(string)
+	userID, _ := strconv.Atoi(userIDStr)
+	book := &UserRequest{}
+	readErr := json.NewDecoder(r.Body).Decode(book)
+	if readErr != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var books []Items
+	queryErr := dbConn.Model(&books).
+		Where("?=?", pg.Ident("user_id"), userID).
+		Select()
+	if queryErr != nil {
+		w.Write([]byte("error: " + queryErr.Error()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if len(books) == 0 {
+		w.Write([]byte("you haven't added this book to your list yet"))
+		return
+	}
+	BookIndex := make([]UserRequest, len(books))
+	for i := range books {
+		BookIndex[i].Bookname = books[i].Bookname
+		BookIndex[i].Status = books[i].Status
+	}
+	err := json.NewEncoder(w).Encode(BookIndex)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 	w.WriteHeader(http.StatusAccepted)
 }

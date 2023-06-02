@@ -12,6 +12,8 @@ func groupRoutes(router chi.Router) {
 	router.With(middlewareAUth).Route("/{username}", func(r chi.Router) {
 		r.Post("/add/", addBook)
 		r.Delete("/delete/", removeBook)
+		r.Get("/search/", search)
+		r.Get("list_all/", listAllBooks)
 		r.Route("/read", func(r chi.Router) {
 			r.Get("/list/", listBooks)
 		})
