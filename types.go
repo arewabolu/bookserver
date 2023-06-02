@@ -10,18 +10,14 @@ type User struct {
 
 type UserRequest struct {
 	Bookname string `json:"bookname" pg:"bookname"`
+	Status   string `json:"status" pg:"status"`
 }
 
-type Readbook struct {
+type Items struct {
 	ID       int    `json:"-"`
 	UserID   int    `pg:"user_id"`
 	Bookname string `pg:"bookname"`
-}
-
-type UnreadBook struct {
-	ID       int    `json:"-"`
-	UserID   int    `pg:"user_id"`
-	Bookname string `pg:"bookname"`
+	Status   string `json:"status" pg:"status"`
 }
 
 var uuid = struct{}{}

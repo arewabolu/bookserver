@@ -98,55 +98,35 @@ func addBook(w http.ResponseWriter, r *http.Request) {
 	defer dbConn.Close()
 	userIDStr := r.Context().Value(uuid).(string)
 	userID, _ := strconv.Atoi(userIDStr)
-
-	switch {
-	case strings.Contains(r.URL.Path, "/read"):
-		book := &UserRequest{}
-		readErr := json.NewDecoder(r.Body).Decode(book)
-		if readErr != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if book.Bookname == "" || book.Bookname == " " {
-			w.WriteHeader(http.StatusNoContent)
-		}
-		bookInfo := &Readbook{
-			UserID:   userID,
-			Bookname: book.Bookname,
-		}
-		_, insErr := dbConn.Model(bookInfo).Insert()
-		if insErr != nil {
-			w.Write([]byte("sorry! we were unable to add your read book" + insErr.Error()))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusAccepted)
-	case strings.Contains(r.URL.Path, "/unread"):
-		book := &UserRequest{}
-		readErr := json.NewDecoder(r.Body).Decode(book)
-		if readErr != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if book.Bookname == "" || book.Bookname == " " {
-			w.WriteHeader(http.StatusNoContent)
-		}
-
-		bookInfo := &UnreadBook{
-			UserID:   userID,
-			Bookname: book.Bookname,
-		}
-		_, insErr := dbConn.Model(bookInfo).Insert()
-		if insErr != nil {
-			w.Write([]byte("sorry! we were unable to add your unread book"))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusAccepted)
+	book := &UserRequest{}
+	readErr := json.NewDecoder(r.Body).Decode(book)
+	if readErr != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
+
+	if book.Bookname == "" || book.Bookname == " " {
+		w.WriteHeader(http.StatusNoContent)
+	}
+	bookInfo := &Items{
+		UserID:   userID,
+		Bookname: book.Bookname,
+		Status:   book.Status,
+	}
+	_, insErr := dbConn.Model(bookInfo).Insert()
+	if insErr != nil {
+		w.Write([]byte("sorry! we were unable to add your read book" + insErr.Error()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func listBooks(w http.ResponseWriter, r *http.Request) {
+	if r.Body != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	dbConn := Open()
 	defer dbConn.Close()
 	userIDStr := r.Context().Value(uuid).(string)
@@ -154,96 +134,108 @@ func listBooks(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case strings.Contains(r.URL.Path, "/read"):
-		var books []Readbook
-		queryErr := dbConn.Model(&books).Column("bookname").Where("?=?", pg.Ident("user_id"), userID).Select()
+		var books []Items
+		queryErr := dbConn.Model(&books).Column("bookname").
+			Where("?=?", pg.Ident("user_id"), userID).
+			Where("?=?", pg.Ident("status"), "read").
+			Select()
 		if queryErr != nil {
 			w.Write([]byte("unable to list read books"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		indBooks := make([]UserRequest, len(books))
+		BookIndex := make([]UserRequest, len(books))
 		for i := range books {
-			indBooks[i].Bookname = books[i].Bookname
+			BookIndex[i].Bookname = books[i].Bookname
 		}
-		err := json.NewEncoder(w).Encode(indBooks)
+		err := json.NewEncoder(w).Encode(BookIndex)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		w.WriteHeader(http.StatusAccepted)
 	case strings.Contains(r.URL.Path, "/unread"):
-		var books []UnreadBook
-		queryErr := dbConn.Model(&books).Column("bookname").Where("?=?", pg.Ident("user_id"), userID).Select()
+		var books []Items
+		queryErr := dbConn.Model(&books).Column("bookname").
+			Where("?=?", pg.Ident("user_id"), userID).
+			Where("?=?", pg.Ident("status"), "unread").
+			Select()
 		if queryErr != nil {
 			w.Write([]byte("unable to list unread books"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		indBooks := make([]UserRequest, len(books))
+		BookIndex := make([]UserRequest, len(books))
 		for i := range books {
-			indBooks[i].Bookname = books[i].Bookname
+			BookIndex[i].Bookname = books[i].Bookname
 		}
-		err := json.NewEncoder(w).Encode(indBooks)
+		err := json.NewEncoder(w).Encode(BookIndex)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
+
+func listAllBooks(w http.ResponseWriter, r *http.Request) {
+	if r.Body != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	dbConn := Open()
+	defer dbConn.Close()
+	userIDStr := r.Context().Value(uuid).(string)
+	userID, _ := strconv.Atoi(userIDStr)
+
+	var books []Items
+	queryErr := dbConn.Model(&books).Column("bookname").
+		Where("?=?", pg.Ident("user_id"), userID).
+		Select()
+	if queryErr != nil {
+		w.Write([]byte("unable to list read books"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	BookIndex := make([]UserRequest, len(books))
+	for i := range books {
+		BookIndex[i].Bookname = books[i].Bookname
+		BookIndex[i].Status = books[i].Status
+	}
+	err := json.NewEncoder(w).Encode(BookIndex)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
 func removeBook(w http.ResponseWriter, r *http.Request) {
 	dbConn := Open()
 	defer dbConn.Close()
 	userIDStr := r.Context().Value(uuid).(string)
 	userID, _ := strconv.Atoi(userIDStr)
 
-	switch {
-	case strings.Contains(r.URL.Path, "/read"):
-		book := &UserRequest{}
-		readErr := json.NewDecoder(r.Body).Decode(book)
-		if readErr != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if book.Bookname == "" || book.Bookname == " " {
-			w.WriteHeader(http.StatusNoContent)
-		}
-
-		bookInfoModel := &Readbook{}
-		_, delErr := dbConn.Model(bookInfoModel).
-			Where("?=?", pg.Ident("bookname"), book.Bookname).
-			Where("?=?", pg.Ident("user_id"), userID).
-			Limit(1).Delete()
-		if delErr != nil {
-			w.Write([]byte("This book is not available in your read list"))
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		w.WriteHeader(http.StatusAccepted)
-	case strings.Contains(r.URL.Path, "/unread"):
-		book := &UserRequest{}
-		readErr := json.NewDecoder(r.Body).Decode(book)
-		if readErr != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if book.Bookname == "" || book.Bookname == " " {
-			w.WriteHeader(http.StatusNoContent)
-		}
-
-		unreadBookInfo := &UnreadBook{
-			UserID:   userID,
-			Bookname: book.Bookname,
-		}
-		_, delErr := dbConn.Model(unreadBookInfo).
-			Where("?=?", pg.Ident("bookname"), book.Bookname).
-			Where("?=?", pg.Ident("user_id"), userID).
-			Limit(1).Delete()
-		if delErr != nil {
-			w.Write([]byte("This book is not available in your unread list"))
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		w.WriteHeader(http.StatusAccepted)
+	book := &UserRequest{}
+	readErr := json.NewDecoder(r.Body).Decode(book)
+	if readErr != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
+	if book.Bookname == "" || book.Bookname == " " {
+		w.WriteHeader(http.StatusNoContent)
+	}
+
+	bookInfoModel := &Items{}
+	_, delErr := dbConn.Model(bookInfoModel).
+		Where("?=?", pg.Ident("bookname"), book.Bookname).
+		Where("?=?", pg.Ident("user_id"), userID).
+		Where("?=?", pg.Ident("status"), book.Status).
+		Limit(1).Delete()
+	if delErr != nil {
+		w.Write([]byte("This book is not available in your read list"))
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
 }

@@ -10,18 +10,15 @@ import (
 
 func groupRoutes(router chi.Router) {
 	router.With(middlewareAUth).Route("/{username}", func(r chi.Router) {
+		r.Post("/add/", addBook)
+		r.Delete("/delete/", removeBook)
 		r.Route("/read", func(r chi.Router) {
-			r.Post("/add/", addBook)
-			r.Delete("/delete/", removeBook)
-			r.Get("/list_all/", listBooks)
+			r.Get("/list/", listBooks)
 		})
 		r.Route("/unread", func(r chi.Router) {
-			r.Post("/add/", addBook)
-			r.Delete("/user/delete/", removeBook)
-			r.Get("/user/list_all/", listBooks)
-
+			r.Get("list/", listBooks)
 		})
-
+		r.Get("list_all/", listAllBooks)
 	})
 }
 
