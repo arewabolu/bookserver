@@ -13,14 +13,13 @@ func groupRoutes(router chi.Router) {
 		r.Post("/add/", addBook)
 		r.Delete("/delete/", removeBook)
 		r.Get("/search/", search)
-		r.Get("list_all/", listAllBooks)
+		r.Get("/list_all/", listAllBooks)
 		r.Route("/read", func(r chi.Router) {
 			r.Get("/list/", listBooks)
 		})
 		r.Route("/unread", func(r chi.Router) {
-			r.Get("list/", listBooks)
+			r.Get("/list/", listBooks)
 		})
-		r.Get("list_all/", listAllBooks)
 	})
 }
 
